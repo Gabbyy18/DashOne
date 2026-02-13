@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Calidad de Agua</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --danger: #dc2626;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #334155;
+        }
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg);
+            margin: 0;
+            padding: 20px;
+            color: var(--text);
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* HEADER & TABS */
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            background: var(--card);
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .tabs { display: flex; gap: 10px; }
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* CONTENIDO */
+        .tab-content { display: none; animation: fadeIn 0.4s; }
+        .tab-content.active { display: block; }
+
+        /* SECCIÓN DE GAUGES (MEDIDORES) */
+        .gauges-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .gauge-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            text-align: center;
+            position: relative;
+        }
+        .gauge-card h4 { margin: 0 0 10px 0; color: #64748b; }
+        .gauge-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: var(--primary);
+            margin-top: -10px;
+            display: block;
+        }
+        /* Ajuste para que los medidores no sean gigantes */
+        .canvas-gauge-container {
+            height: 150px; 
+            position: relative;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* FORMULARIO */
+        .form-card {
+            background: var(--card);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .full-width { grid-column: 1 / -1; }
+        .submit-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            margin-top: 20px;
+            font-weight: 600;
+        }
+        .submit-btn:hover { opacity: 0.9; }
+
+        /* ZONA DE GRÁFICA PRINCIPAL */
+        .chart-controls-bar {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .filter-group { display: flex; gap: 8px; align-items: center; }
+        .filter-btn {
+            padding: 6px 16px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            color: #64748b;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        /* SELECTOR DE TIPO DE GRÁFICA */
+        .chart-type-selector {
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            background-color: #f1f5f9;
+            cursor: pointer;
+        }
+
+        .main-chart-card {
+            background: var(--card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            min-height: 400px;
+        }
+
+        .csv-btn {
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* TABLA */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            background: var(--card);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+        th { background-color: #f8fafc; font-weight: 600; color: #475569; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header-controls">
+        <h2 style="margin:0;">💧 Monitor de Calidad</h2>
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('formulario')">Nuevo Registro</button>
+            <button class="tab-btn" onclick="switchTab('dashboard')">Dashboard & Gráficas</button>
+        </div>
+    </div>
+
+    <div id="formulario" class="tab-content active">
+        <div class="form-card">
+            <h3 style="margin-top:0">Ingresar Datos de Toma</h3>
+            <form id="dataForm">
+                <div class="form-grid">
+                    <div class="form-group full-width">
+                        <label>Fecha y Hora</label>
+                        <input type="datetime-local" id="fechaHora" required>
+                    </div>
+                    <div class="form-group">
+                        <label>pH (0-14)</label>
+                        <input type="number" id="ph" step="0.01" required placeholder="Ej: 7.2">
+                    </div>
+                    <div class="form-group">
+                        <label>Temperatura (°C)</label>
+                        <input type="number" id="temp" step="0.1" required placeholder="Ej: 24.5">
+                    </div>
+                    <div class="form-group">
+                        <label>ORP (mV)</label>
+                        <input type="number" id="orp" step="1" required placeholder="Ej: 350">
+                    </div>
+                    <div class="form-group">
+                        <label>Conductividad (EC)</label>
+                        <input type="number" id="ec" step="0.01" required placeholder="Ej: 1.2">
+                    </div>
+                    <div class="form-group">
+                        <label>Salinidad (ppt)</label>
+                        <input type="number" id="salinidad" step="0.01" required placeholder="Ej: 30">
+                    </div>
+                    <div class="form-group">
+                        <label>Gravedad Esp. (S.G)</label>
+                        <input type="number" id="sg" step="0.001" required placeholder="Ej: 1.025">
+                    </div>
+                    <div class="form-group full-width">
+                        <label>Observaciones</label>
+                        <textarea id="observaciones" rows="3" placeholder="Notas sobre el estado del agua..."></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">Guardar Datos</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="dashboard" class="tab-content">
+        
+        <div class="gauges-container">
+            <div class="gauge-card">
+                <h4>pH Actual</h4>
+                <div class="canvas-gauge-container"><canvas id="gaugePH"></canvas></div>
+                <span id="valPH" class="gauge-value">--</span>
+            </div>
+            <div class="gauge-card">
+                <h4>Temperatura (°C)</h4>
+                <div class="canvas-gauge-container"><canvas id="gaugeTemp"></canvas></div>
+                <span id="valTemp" class="gauge-value">--</span>
+            </div>
+            <div class="gauge-card">
+                <h4>ORP (mV)</h4>
+                <div class="canvas-gauge-container"><canvas id="gaugeORP"></canvas></div>
+                <span id="valORP" class="gauge-value">--</span>
+            </div>
+        </div>
+
+        <div class="chart-controls-bar">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <label style="font-weight:bold;">📊 Estilo de Gráfica:</label>
+                <select id="chartTypeSelector" class="chart-type-selector" onchange="updateMainChartDisplay()">
+                    <option value="line">📈 Línea de Tiempo (Histórico)</option>
+                    <option value="radar">🕸️ Radar (Balance Actual)</option>
+                    <option value="scatter">∴ Dispersión (Temp vs pH)</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <button class="filter-btn" onclick="applyTimeFilter('24h', this)">24H</button>
+                <button class="filter-btn" onclick="applyTimeFilter('7d', this)">7 Días</button>
+                <button class="filter-btn active" onclick="applyTimeFilter('all', this)">Todo</button>
+                <input type="date" id="dateFilter" style="padding:5px; border-radius:5px; border:1px solid #ddd;" onchange="applyDateFilter(this.value)">
+            </div>
+
+            <button class="csv-btn" onclick="downloadCSV()">📥 Exportar Excel</button>
+        </div>
+
+        <div class="main-chart-card">
+            <canvas id="mainChart"></canvas>
+        </div>
+
+        <h3>Historial Completo</h3>
+        <table id="historyTable">
+            <thead>
+                <tr><th>Fecha</th><th>pH</th><th>Temp</th><th>ORP</th><th>EC</th><th>Sal</th><th>S.G</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        
+        <div style="text-align:right; margin-top:20px;">
+            <button onclick="clearAllData()" style="color:red; background:none; border:none; cursor:pointer; text-decoration:underline;">Borrar todo el historial</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- GESTIÓN DE DATOS ---
+    let registros = [];
+    let currentFilteredData = []; // Datos que se están mostrando actualmente
+
+    // Instancias de Chart.js
+    let mainChartInstance = null;
+    let gaugeInstances = { ph: null, temp: null, orp: null };
+
+    // Valores máximos de referencia para el Radar (para normalizar)
+    const MAX_VALS = { ph: 14, temp: 40, orp: 600, ec: 5, salinidad: 40, sg: 1.040 };
+
+    function init() {
+        loadData();
+        // Inicializar Gauges vacíos
+        initGauges();
+        // Cargar vista por defecto
+        if(registros.length > 0) {
+            updateDashboard(registros); 
+        }
+    }
+
+    function loadData() {
+        const saved = localStorage.getItem('waterData_v3');
+        if (saved) {
+            registros = JSON.parse(saved);
+            registros.sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora));
+        }
+        currentFilteredData = [...registros]; // Al inicio mostramos todo
+        setDefaultTime();
+    }
+
+    function saveData() {
+        localStorage.setItem('waterData_v3', JSON.stringify(registros));
+    }
+
+    function setDefaultTime() {
+        const now = new Date();
+        now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+        document.getElementById('fechaHora').value = now.toISOString().slice(0, 16);
+    }
+
+    // --- PESTAÑAS ---
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById(tabName).classList.add('active');
+        // Activar botón correspondiente
+        const btns = document.querySelectorAll('.tab-btn');
+        if(tabName === 'formulario') btns[0].classList.add('active');
+        else {
+            btns[1].classList.add('active');
+            // Forzar redibujado de gráficas al hacerlas visibles
+            setTimeout(() => updateMainChartDisplay(), 100); 
+        }
+    }
+
+    // --- FORMULARIO ---
+    document.getElementById('dataForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const data = {
+            fechaHora: document.getElementById('fechaHora').value,
+            ph: parseFloat(document.getElementById('ph').value),
+            temp: parseFloat(document.getElementById('temp').value),
+            orp: parseFloat(document.getElementById('orp').value),
+            ec: parseFloat(document.getElementById('ec').value),
+            salinidad: parseFloat(document.getElementById('salinidad').value),
+            sg: parseFloat(document.getElementById('sg').value),
+            obs: document.getElementById('observaciones').value
+        };
+        registros.push(data);
+        registros.sort((a, b) => new Date(a.fechaHora) - new Date(b.fechaHora));
+        saveData();
+        
+        // Reset
+        document.getElementById('dataForm').reset();
+        setDefaultTime();
+        alert('Datos guardados.');
+        
+        // Actualizar datos globales
+        currentFilteredData = [...registros];
+        updateDashboard(registros);
+    });
+
+    // --- DASHBOARD CORE ---
+    function updateDashboard(data) {
+        // 1. Actualizar Gauges (Siempre usan el ÚLTIMO dato registrado, sin importar filtro)
+        const lastEntry = registros[registros.length - 1];
+        updateGauges(lastEntry);
+
+        // 2. Actualizar Tabla
+        renderTable(data);
+
+        // 3. Actualizar Gráfica Principal
+        updateMainChartDisplay();
+    }
+
+    // --- LÓGICA DE FILTROS ---
+    function applyTimeFilter(range, btn) {
+        document.getElementById('dateFilter').value = ''; // Limpiar calendario
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+
+        const now = new Date();
+        if (range === 'all') {
+            currentFilteredData = registros;
+        } else {
+            const cutoff = new Date();
+            if (range === '24h') cutoff.setHours(now.getHours() - 24);
+            if (range === '7d') cutoff.setDate(now.getDate() - 7);
+            currentFilteredData = registros.filter(r => new Date(r.fechaHora) >= cutoff);
+        }
+        renderTable(currentFilteredData);
+        updateMainChartDisplay();
+    }
+
+    function applyDateFilter(dateVal) {
+        if(!dateVal) return;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        currentFilteredData = registros.filter(r => r.fechaHora.startsWith(dateVal));
+        renderTable(currentFilteredData);
+        updateMainChartDisplay();
+    }
+
+    // --- GAUGES (Doughnut Charts simulados) ---
+    function initGauges() {
+        const commonOptions = {
+            rotation: -90,
+            circumference: 180,
+            cutout: '75%', // Grosor del arco
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            aspectRatio: 1.5
+        };
+
+        const createGauge = (ctxId, color) => new Chart(document.getElementById(ctxId), {
+            type: 'doughnut',
+            data: { datasets: [{ data: [0, 100], backgroundColor: [color, '#e2e8f0'], borderWidth: 0 }] },
+            options: commonOptions
+        });
+
+        gaugeInstances.ph = createGauge('gaugePH', '#3b82f6');
+        gaugeInstances.temp = createGauge('gaugeTemp', '#f97316');
+        gaugeInstances.orp = createGauge('gaugeORP', '#a855f7');
+    }
+
+    function updateGauges(data) {
+        if(!data) return;
+        
+        // Actualizar Textos
+        document.getElementById('valPH').innerText = data.ph;
+        document.getElementById('valTemp').innerText = data.temp + "°";
+        document.getElementById('valORP').innerText = data.orp;
+
+        // Actualizar Gráficos (Porcentajes visuales estimados)
+        // pH: 0-14, Temp: 0-50, ORP: 0-1000 (ajustables)
+        const updateDoughnut = (chart, val, max) => {
+            let percentage = (val / max) * 100;
+            if(percentage > 100) percentage = 100;
+            chart.data.datasets[0].data = [percentage, 100 - percentage];
+            chart.update();
+        };
+
+        updateDoughnut(gaugeInstances.ph, data.ph, 14);
+        updateDoughnut(gaugeInstances.temp, data.temp, 50);
+        updateDoughnut(gaugeInstances.orp, data.orp, 600); // Asumiendo max ORP 600
+    }
+
+    // --- GRÁFICA PRINCIPAL (EL CEREBRO DE LA OPERACIÓN) ---
+    function updateMainChartDisplay() {
+        const ctx = document.getElementById('mainChart').getContext('2d');
+        const type = document.getElementById('chartTypeSelector').value;
+        const data = currentFilteredData; // Usamos los datos filtrados
+
+        if (mainChartInstance) mainChartInstance.destroy();
+
+        // OPCIÓN 1: LÍNEA (HISTÓRICO)
+        if (type === 'line') {
+            mainChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(r => {
+                        const d = new Date(r.fechaHora);
+                        // Mostrar solo hora si es un solo día, o fecha+hora si es rango
+                        return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + (data.length > 20 ? `\n${d.getDate()}/${d.getMonth()+1}` : '');
+                    }),
+                    datasets: [
+                        { label: 'pH', data: data.map(r => r.ph), borderColor: '#3b82f6', tension: 0.3 },
+                        { label: 'Temp', data: data.map(r => r.temp), borderColor: '#f97316', tension: 0.3 },
+                        { label: 'ORP', data: data.map(r => r.orp), borderColor: '#a855f7', hidden: true },
+                        { label: 'Salinidad', data: data.map(r => r.salinidad), borderColor: '#10b981' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        // OPCIÓN 2: RADAR (BALANCE) - Solo muestra el ÚLTIMO registro del filtro
+        else if (type === 'radar') {
+            const last = data[data.length - 1];
+            if (!last) return; // Si no hay datos
+
+            // Normalizamos datos al 100% para que el radar se vea bien
+            // (Si no, ORP de 400 aplasta al pH de 7)
+            const normalizedData = [
+                (last.ph / MAX_VALS.ph) * 100,
+                (last.temp / MAX_VALS.temp) * 100,
+                (last.orp / MAX_VALS.orp) * 100,
+                (last.ec / MAX_VALS.ec) * 100,
+                (last.salinidad / MAX_VALS.salinidad) * 100
+            ];
+
+            mainChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['pH', 'Temp', 'ORP', 'EC', 'Salinidad'],
+                    datasets: [{
+                        label: 'Balance Actual (%)',
+                        data: normalizedData,
+                        backgroundColor: 'rgba(37, 99, 235, 0.2)',
+                        borderColor: '#2563eb',
+                        pointBackgroundColor: '#2563eb'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: '#e2e8f0' },
+                            suggestedMin: 0,
+                            suggestedMax: 100,
+                            ticks: { display: false } // Ocultar números del eje radial para limpieza
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                // Mostrar el valor real en el tooltip, no el porcentaje
+                                label: function(context) {
+                                    const rawVal = [last.ph, last.temp, last.orp, last.ec, last.salinidad][context.dataIndex];
+                                    return `${context.label}: ${rawVal}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // OPCIÓN 3: SCATTER (DISPERSIÓN) - Temp vs pH
+        else if (type === 'scatter') {
+            mainChartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Correlación Temp (X) vs pH (Y)',
+                        data: data.map(r => ({ x: r.temp, y: r.ph })),
+                        backgroundColor: '#dc2626'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { title: { display: true, text: 'Temperatura (°C)' } },
+                        y: { title: { display: true, text: 'pH' } }
+                    }
+                }
+            });
+        }
+    }
+
+    // --- TABLA Y UTILIDADES ---
+    function renderTable(data) {
+        const tbody = document.querySelector('#historyTable tbody');
+        tbody.innerHTML = '';
+        [...data].reverse().forEach(r => {
+            const d = new Date(r.fechaHora);
+            const row = `<tr>
+                <td>${d.toLocaleDateString()} ${d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</td>
+                <td>${r.ph}</td><td>${r.temp}</td><td>${r.orp}</td><td>${r.ec}</td><td>${r.salinidad}</td><td>${r.sg}</td>
+            </tr>`;
+            tbody.innerHTML += row;
+        });
+    }
+
+    function downloadCSV() {
+        if (registros.length === 0) return alert("Sin datos");
+        let csv = "Fecha,pH,Temp,ORP,EC,Salinidad,SG,Observaciones\n";
+        registros.forEach(r => {
+            let obs = r.obs ? r.obs.replace(/,/g, " ").replace(/[\r\n]+/g, " ") : "";
+            csv += `${r.fechaHora},${r.ph},${r.temp},${r.orp},${r.ec},${r.salinidad},${r.sg},${obs}\n`;
+        });
+        const link = document.createElement("a");
+        link.href = encodeURI("data:text/csv;charset=utf-8," + csv);
+        link.download = "reporte_agua.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+
+    function clearAllData() {
+        if(confirm("¿Borrar TODO?")) {
+            localStorage.removeItem('waterData_v3');
+            registros = [];
+            currentFilteredData = [];
+            init(); // Reiniciar
+        }
+    }
+
+    // Iniciar app
+    init();
+
+</script>
+</body>
+</html>
