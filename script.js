@@ -1,10 +1,10 @@
-   // --- VARIABLES ---
+   //VARIABLES
     let registros = [];
     let currentFilteredData = [];
     let mainChartInstance = null;
     let gaugeInstances = { ph: null, temp: null, orp: null };
 
-    // Valores máximos visuales (para pintar las barras de progreso)
+    // Valores máximos visuales (barras  progreso)
     const VISUAL_MAX = { ph: 14, temp: 40, orp: 600, ec: 5, salinidad: 40 };
 
     function init() {
@@ -66,25 +66,24 @@
         document.getElementById('dataForm').reset();
         setDefaultTime();
         alert('Datos guardados.');
-        
-        // Refrescar con todo
+
         currentFilteredData = [...registros];
         updateDashboard(registros);
     });
 
-    // --- DASHBOARD CENTRAL ---
+    // DASHBOARD CENTRAL 
     function updateDashboard(data) {
-        // 1. Gauges (Ahora calculan el PROMEDIO de la data filtrada)
+        //Gauges (Ahora calculan el PROMEDIO de la data filtrada)
         updateGauges(data);
 
-        // 2. Tabla
+        //Tabla
         renderTable(data);
 
-        // 3. Gráfica
+        //Gráfica
         updateMainChartDisplay();
     }
 
-    // --- FILTROS ---
+    //  FILTROS 
     function applyTimeFilter(range, btn) {
         document.getElementById('dateFilter').value = '';
         document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -99,8 +98,6 @@
             if (range === '7d') cutoff.setDate(now.getDate() - 7);
             currentFilteredData = registros.filter(r => new Date(r.fechaHora) >= cutoff);
         }
-        
-        // ¡IMPORTANTE! Aquí actualizamos todo el dashboard con la data filtrada
         updateDashboard(currentFilteredData);
     }
 
@@ -111,7 +108,7 @@
         updateDashboard(currentFilteredData);
     }
 
-    // --- GAUGES CON PROMEDIOS ---
+    //GAUGES CON PROMEDIOS
     function initGauges() {
         const commonOptions = {
             rotation: -90,
@@ -133,7 +130,6 @@
     }
 
     function updateGauges(dataArray) {
-        // Si no hay datos, ponemos ceros y salimos
         if(!dataArray || dataArray.length === 0) {
             document.getElementById('valPH').innerText = "--";
             document.getElementById('valTemp').innerText = "--";
@@ -175,7 +171,7 @@
         chart.update();
     }
 
-    // --- GRÁFICAS ---
+    // GRÁFICAS
     function updateMainChartDisplay() {
         const ctx = document.getElementById('mainChart').getContext('2d');
         const type = document.getElementById('chartTypeSelector').value;
@@ -183,7 +179,7 @@
 
         if (mainChartInstance) mainChartInstance.destroy();
 
-        // 1. LÍNEA
+        // LÍNEAl
         if (type === 'line') {
             mainChartInstance = new Chart(ctx, {
                 type: 'line',
@@ -203,18 +199,18 @@
             });
         }
 
-        // 2. RADAR - También usando PROMEDIOS
+        // 2. RADAR - PROMEDIOS
         else if (type === 'radar') {
             if (data.length === 0) return;
 
-            // Calcular promedios para el radar
+            // CALCULO PROMEDIOS
             let sums = {ph:0, temp:0, orp:0, ec:0, sal:0};
             data.forEach(d => {
                 sums.ph += d.ph; sums.temp += d.temp; sums.orp += d.orp; sums.ec += d.ec; sums.sal += d.salinidad;
             });
             const len = data.length;
             
-            // Normalizamos al 100%
+            // Normalizacion
             const normalizedData = [
                 ((sums.ph/len) / VISUAL_MAX.ph) * 100,
                 ((sums.temp/len) / VISUAL_MAX.temp) * 100,
@@ -254,7 +250,7 @@
             });
         }
 
-        // 3. SCATTER
+        // SCATTER
         else if (type === 'scatter') {
             mainChartInstance = new Chart(ctx, {
                 type: 'scatter',

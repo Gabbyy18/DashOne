@@ -50,7 +50,7 @@
         .tab-content { display: none; animation: fadeIn 0.4s; }
         .tab-content.active { display: block; }
 
-        /* SECCIÓN DE GAUGES (MEDIDORES) */
+        /* GAUGES */
         .gauges-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -65,7 +65,7 @@
             text-align: center;
             position: relative;
         }
-        /* Etiqueta pequeña para indicar que es promedio */
+        /* PROMEDIO*/
         .badge-avg {
             background: #e0f2fe;
             color: #0369a1;
